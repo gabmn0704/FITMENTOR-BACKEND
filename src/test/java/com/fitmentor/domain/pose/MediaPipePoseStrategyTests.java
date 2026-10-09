@@ -40,7 +40,9 @@ class MediaPipePoseStrategyTests {
 
             assertThat(requestBody.get())
                 .contains("\"exercise\":\"squat\"")
-                .contains("\"name\":\"left_hip\"");
+                .contains("\"name\":\"left_hip\"")
+                .contains("\"frame_width\":16")
+                .contains("\"frame_height\":9");
             assertThat(result.score()).isEqualTo(82.5);
             assertThat(result.feedback()).isEqualTo("Lower the hips. Keep your chest stable.");
         } finally {
