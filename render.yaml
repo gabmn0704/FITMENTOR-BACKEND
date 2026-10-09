@@ -1,0 +1,41 @@
+databases:
+  - name: fitmentor-db
+    databaseName: fitmentor
+    user: fitmentor
+    plan: free
+
+services:
+  - type: web
+    name: fitmentor-backend
+    runtime: docker
+    plan: free
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: DATABASE_HOST
+        fromDatabase:
+          name: fitmentor-db
+          property: host
+      - key: DATABASE_PORT
+        fromDatabase:
+          name: fitmentor-db
+          property: port
+      - key: DATABASE_NAME
+        fromDatabase:
+          name: fitmentor-db
+          property: database
+      - key: DATABASE_USER
+        fromDatabase:
+          name: fitmentor-db
+          property: user
+      - key: DATABASE_PASSWORD
+        fromDatabase:
+          name: fitmentor-db
+          property: password
+      - key: DATABASE_DRIVER
+        value: org.postgresql.Driver
+      - key: AI_SERVICE_URL
+        value: https://fitmentor-ai.onrender.com
+      - key: SPRING_PROFILES_ACTIVE
+        value: render
+      - key: PORT
+        value: "8080"
