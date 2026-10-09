@@ -1,7 +1,6 @@
 package com.fitmentor.domain.pose;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.util.List;
 
 public record PoseFrame(

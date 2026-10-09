@@ -17,7 +17,7 @@ public class TrainingSocketController {
     @MessageMapping("/pose")
     @SendTo("/topic/feedback")
     public FeedbackEvent analyze(PoseFrame frame) {
-        PoseAnalysis result = poseAnalyzer.analyze(frame, "mediapipe");
+        PoseAnalysis result = poseAnalyzer.analyze(frame, "ai-service");
         return new FeedbackEvent("POSTURE", result.feedback(), result.score(), 0);
     }
 }
