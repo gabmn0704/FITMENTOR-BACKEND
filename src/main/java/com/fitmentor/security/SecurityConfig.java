@@ -5,6 +5,8 @@ import com.fitmentor.api.error.ApiError;
 import com.fitmentor.config.FitmentorProperties;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -20,6 +22,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.io.IOException;
+import java.time.Clock;
 import java.util.List;
 
 /**
@@ -30,13 +33,15 @@ import java.util.List;
 @EnableWebSecurity
 public class SecurityConfig {
 
+    private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
+
     public static final String[] PUBLIC_PATHS = {
         "/api/health", "/actuator/health", "/actuator/health/**", "/api/auth/**", "/ws", "/ws/**", "/error"
     };
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtService jwtService, ObjectMapper objectMapper,
-                                                   FitmentorProperties properties) throws Exception {
+                                                   FitmentorProperties properties, Clock clock) throws Exception {
         return http
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource(properties)))
@@ -47,6 +52,8 @@ public class SecurityConfig {
                 .anyRequest().authenticated())
             .exceptionHandling(handling -> handling.authenticationEntryPoint(unauthorized(objectMapper)))
             .addFilterBefore(new JwtAuthenticationFilter(jwtService), UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(new RateLimitFilter(objectMapper, clock,
+                properties.rateLimit().authPerMinute(), properties.rateLimit().coachPerMinute()), JwtAuthenticationFilter.class)
             .build();
     }
 
@@ -55,6 +62,7 @@ public class SecurityConfig {
         List<String> origins = properties.cors().allowedOrigins();
         CorsConfiguration configuration = new CorsConfiguration();
         if (origins.contains("*")) {
+            logger.warn("CORS allows any origin. Set FRONTEND_ORIGIN to the frontend URL in production.");
             configuration.addAllowedOriginPattern("*");
         } else {
             origins.forEach(configuration::addAllowedOrigin);

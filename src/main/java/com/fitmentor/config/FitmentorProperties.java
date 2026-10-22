@@ -6,15 +6,24 @@ import java.util.List;
 
 /**
  * Typed configuration bound from the {@code fitmentor.*} properties, which are fed by
- * environment variables (JWT_SECRET, GOOGLE_CLIENT_ID, FRONTEND_ORIGIN).
+ * environment variables (JWT_SECRET, GOOGLE_CLIENT_ID, FRONTEND_ORIGIN, RATE_LIMIT_*).
  */
 @ConfigurationProperties(prefix = "fitmentor")
-public record FitmentorProperties(Jwt jwt, Google google, Cors cors) {
+public record FitmentorProperties(Jwt jwt, Google google, Cors cors, RateLimit rateLimit) {
 
     public FitmentorProperties {
         jwt = jwt == null ? new Jwt(null) : jwt;
         google = google == null ? new Google(null) : google;
         cors = cors == null ? new Cors(List.of("*")) : cors;
+        rateLimit = rateLimit == null ? new RateLimit(0, 0) : rateLimit;
+    }
+
+    /** Requests per minute and client for login and coach; 0 or less uses the default. */
+    public record RateLimit(int authPerMinute, int coachPerMinute) {
+        public RateLimit {
+            authPerMinute = authPerMinute > 0 ? authPerMinute : 20;
+            coachPerMinute = coachPerMinute > 0 ? coachPerMinute : 30;
+        }
     }
 
     /** Signing secret for HS256 tokens. Blank means "not configured". */

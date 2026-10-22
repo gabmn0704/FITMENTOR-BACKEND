@@ -29,5 +29,19 @@
         <dependency><groupId>com.google.api-client</groupId><artifactId>google-api-client</artifactId><version>2.7.2</version></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>
     </dependencies>
-    <build><plugins><plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId></plugin></plugins></build>
+    <build>
+        <plugins>
+            <plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId></plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- Integration tests log in many guests from 127.0.0.1 in one shared context. -->
+                    <systemPropertyVariables>
+                        <RATE_LIMIT_AUTH_PER_MINUTE>10000</RATE_LIMIT_AUTH_PER_MINUTE>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>

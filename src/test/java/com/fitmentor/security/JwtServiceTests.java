@@ -84,6 +84,6 @@ class JwtServiceTests {
     }
 
     private JwtService service(String secret, MockEnvironment environment) {
-        return new JwtService(new FitmentorProperties(new FitmentorProperties.Jwt(secret), null, null), environment, clock);
+        return new JwtService(new FitmentorProperties(new FitmentorProperties.Jwt(secret), null, null, null), environment, clock);
     }
 }

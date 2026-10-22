@@ -24,5 +24,9 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+server:
+  # Render terminates TLS in a private proxy: trust its X-Forwarded-* headers (Tomcat RemoteIpValve
+  # only trusts private addresses), so rate limits see the real client IP.
+  forward-headers-strategy: native
 ai:
   service-url: ${AI_SERVICE_URL:https://fitmentor-ai-drmr.onrender.com}

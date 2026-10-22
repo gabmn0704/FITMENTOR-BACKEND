@@ -23,6 +23,9 @@ fitmentor:
     client-id: ${GOOGLE_CLIENT_ID:}
   cors:
     allowed-origins: ${FRONTEND_ORIGIN:*}
+  rate-limit:
+    auth-per-minute: ${RATE_LIMIT_AUTH_PER_MINUTE:20}
+    coach-per-minute: ${RATE_LIMIT_COACH_PER_MINUTE:30}
 management:
   endpoints:
     web:
