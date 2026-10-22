@@ -16,6 +16,7 @@ import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import org.springframework.web.socket.config.annotation.WebSocketTransportRegistration;
 
 /**
  * STOMP over WebSocket at {@code /ws}. Application destinations start with {@code /app} and
@@ -25,6 +26,8 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
+    static final int MAX_INBOUND_MESSAGE_BYTES = 8 * 1024;
 
     private final FitmentorProperties properties;
     private final WebSocketAuthInterceptor authInterceptor;
@@ -43,6 +46,17 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(@NonNull StompEndpointRegistry registry) {
         registry.addEndpoint("/ws").setAllowedOriginPatterns(properties.cors().allowedOrigins().toArray(String[]::new));
+    }
+
+    /**
+     * Transport limits: a pose frame with 33 landmarks is about 3 KB, so inbound STOMP messages
+     * are capped at 8 KB (also the default text buffer of Tomcat); slow consumers are dropped instead of buffering without bound.
+     */
+    @Override
+    public void configureWebSocketTransport(@NonNull WebSocketTransportRegistration registration) {
+        registration.setMessageSizeLimit(MAX_INBOUND_MESSAGE_BYTES);
+        registration.setSendBufferSizeLimit(512 * 1024);
+        registration.setSendTimeLimit(10_000);
     }
 
     @Override

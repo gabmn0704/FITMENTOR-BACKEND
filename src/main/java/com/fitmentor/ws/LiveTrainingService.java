@@ -21,6 +21,8 @@ import java.util.UUID;
 @Service
 public class LiveTrainingService {
 
+    static final int MAX_EXERCISE_LENGTH = 60;
+
     private static final Logger logger = LoggerFactory.getLogger(LiveTrainingService.class);
 
     private final FrameValidationChain frameChain;
@@ -34,7 +36,10 @@ public class LiveTrainingService {
     }
 
     public void handlePose(PoseFrame frame, UUID userId) {
-        if (frame == null || isBlank(frame.sessionId())) {
+        if (frame == null || !LiveTrainingRegistry.isValidSessionId(frame.sessionId())) {
+            return;
+        }
+        if (frame.exercise() == null || frame.exercise().length() > MAX_EXERCISE_LENGTH) {
             return;
         }
         FrameVerdict verdict = frameChain.validate(frame);
@@ -42,8 +47,8 @@ public class LiveTrainingService {
             logger.debug("Dropped frame: {}", verdict.reason());
             return;
         }
-        LiveTraining live = registry.getOrCreate(frame.sessionId(), userId);
-        if (!live.ownedBy(userId)) {
+        LiveTraining live = registry.getOrCreate(frame.sessionId(), userId).orElse(null);
+        if (live == null || !live.ownedBy(userId)) {
             return;
         }
         PoseAnalysis analysis = analyzer.analyze(frame, AiServicePoseStrategy.ENGINE);
@@ -51,11 +56,11 @@ public class LiveTrainingService {
     }
 
     public void handleCommand(CommandMessage message, UUID userId) {
-        if (message == null || isBlank(message.sessionId()) || isBlank(message.name())) {
+        if (message == null || !LiveTrainingRegistry.isValidSessionId(message.sessionId()) || isBlank(message.name())) {
             return;
         }
-        LiveTraining live = registry.getOrCreate(message.sessionId(), userId);
-        if (!live.ownedBy(userId)) {
+        LiveTraining live = registry.getOrCreate(message.sessionId(), userId).orElse(null);
+        if (live == null || !live.ownedBy(userId)) {
             return;
         }
         if ("undo".equals(message.name())) {

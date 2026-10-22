@@ -46,4 +46,13 @@ public final class RateLimitHandler extends FrameHandler {
     public void forget(String sessionId) {
         lastAccepted.remove(sessionId);
     }
+
+    /** Removes the entries whose last accepted frame is older than {@code cutoff}. */
+    public void forgetIdleSince(Instant cutoff) {
+        lastAccepted.values().removeIf(last -> last.isBefore(cutoff));
+    }
+
+    int trackedSessions() {
+        return lastAccepted.size();
+    }
 }
