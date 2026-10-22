@@ -26,6 +26,9 @@ class TrainingFlowIntegrationTests {
     @Autowired
     private ObjectMapper json;
 
+    @Autowired
+    private com.fitmentor.user.UserRepository users;
+
     @Test
     void sessionsStatsRoutineAndAchievementsFollowTheContract() throws Exception {
         String token = guestToken("Marta");
@@ -96,6 +99,24 @@ class TrainingFlowIntegrationTests {
             .andExpect(status().isBadRequest());
         mvc.perform(get("/api/sessions").param("limit", "0").header("Authorization", "Bearer " + token))
             .andExpect(status().isBadRequest());
+        session(token, "{\"exercise\":\"squat\",\"reps\":1,\"accuracy\":50,\"durationSeconds\":60,"
+            + "\"avgAngles\":{\"" + "k".repeat(41) + "\":90}}")
+            .andExpect(status().isBadRequest());
+        session(token, "{\"exercise\":\"squat\",\"reps\":1,\"accuracy\":50,\"durationSeconds\":60,"
+            + "\"avgAngles\":{\"knee\":null}}")
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void tokenOfADeletedUserCannotWriteSessions() throws Exception {
+        String token = guestToken("Gone");
+        String id = json.readTree(mvc.perform(get("/api/me").header("Authorization", "Bearer " + token))
+            .andReturn().getResponse().getContentAsString()).path("id").asText();
+        users.deleteById(java.util.UUID.fromString(id));
+
+        session(token, "{\"exercise\":\"squat\",\"reps\":1,\"accuracy\":50,\"durationSeconds\":60}")
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.error").value("unknown_user"));
     }
 
     @Test

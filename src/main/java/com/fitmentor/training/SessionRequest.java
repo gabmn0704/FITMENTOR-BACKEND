@@ -32,6 +32,8 @@ public record SessionRequest(
     Integer durationSeconds,
 
     @Size(max = 20, message = "avgAngles can contain at most 20 joints")
-    Map<String, Double> avgAngles
+    Map<@NotBlank @Size(max = 40, message = "avgAngles keys must be at most 40 characters") String,
+        @NotNull @DecimalMin(value = "-360", message = "angles must be between -360 and 360")
+        @DecimalMax(value = "360", message = "angles must be between -360 and 360") Double> avgAngles
 ) {
 }

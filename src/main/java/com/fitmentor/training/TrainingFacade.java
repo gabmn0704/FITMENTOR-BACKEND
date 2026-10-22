@@ -66,6 +66,7 @@ public class TrainingFacade {
     /** Stores a finished session. Calories come from the exercise MET and the 70 kg reference weight. */
     @Transactional
     public SessionSummary recordSession(UUID userId, SessionRequest request) {
+        users.require(userId);
         Exercise exercise = catalog.find(request.exercise())
             .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "unknown_exercise", "Unknown exercise."));
         SessionSummary summary = SessionSummary.builder()
