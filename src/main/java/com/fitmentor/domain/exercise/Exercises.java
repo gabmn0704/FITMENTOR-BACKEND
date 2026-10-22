@@ -19,8 +19,8 @@ public final class Exercises {
         public double met() { return 5.0; }
         public List<AngleRule> postureRules() {
             return List.of(
-                new AngleRule("left_hip", "left_knee", "left_ankle", 70, 110, "Lower your hips until your thighs are near parallel."),
-                new AngleRule("left_shoulder", "left_hip", "left_knee", 40, 110, "Keep your chest up and your back straight.")
+                new AngleRule("left_hip", "left_knee", "left_ankle", 70, 110, "Baja la cadera hasta que los muslos queden casi paralelos al suelo."),
+                new AngleRule("left_shoulder", "left_hip", "left_knee", 40, 110, "Mantén el pecho arriba y la espalda recta.")
             );
         }
     }
@@ -33,8 +33,8 @@ public final class Exercises {
         public double met() { return 8.0; }
         public List<AngleRule> postureRules() {
             return List.of(
-                new AngleRule("left_shoulder", "left_elbow", "left_wrist", 60, 100, "Bend your elbows to about 90 degrees."),
-                new AngleRule("left_shoulder", "left_hip", "left_ankle", 160, 190, "Keep your body in a straight line.")
+                new AngleRule("left_shoulder", "left_elbow", "left_wrist", 60, 100, "Flexiona los codos hasta unos 90 grados."),
+                new AngleRule("left_shoulder", "left_hip", "left_ankle", 160, 190, "Mantén el cuerpo en línea recta.")
             );
         }
     }
@@ -47,8 +47,8 @@ public final class Exercises {
         public double met() { return 3.8; }
         public List<AngleRule> postureRules() {
             return List.of(
-                new AngleRule("left_shoulder", "left_hip", "left_ankle", 160, 190, "Do not let your hips sag or pike up."),
-                new AngleRule("left_hip", "left_shoulder", "left_elbow", 70, 110, "Keep your elbows under your shoulders.")
+                new AngleRule("left_shoulder", "left_hip", "left_ankle", 160, 190, "No dejes que la cadera caiga ni suba."),
+                new AngleRule("left_hip", "left_shoulder", "left_elbow", 70, 110, "Mantén los codos debajo de los hombros.")
             );
         }
     }
@@ -61,8 +61,8 @@ public final class Exercises {
         public double met() { return 6.0; }
         public List<AngleRule> postureRules() {
             return List.of(
-                new AngleRule("left_shoulder", "left_hip", "left_knee", 150, 180, "Keep your back flat; do not round it."),
-                new AngleRule("left_hip", "left_knee", "left_ankle", 100, 150, "Hinge at the hips with a slight knee bend.")
+                new AngleRule("left_shoulder", "left_hip", "left_knee", 150, 180, "Mantén la espalda neutra, sin redondearla."),
+                new AngleRule("left_hip", "left_knee", "left_ankle", 100, 150, "Lleva la cadera atrás con una ligera flexión de rodillas.")
             );
         }
     }
@@ -75,8 +75,8 @@ public final class Exercises {
         public double met() { return 4.0; }
         public List<AngleRule> postureRules() {
             return List.of(
-                new AngleRule("left_hip", "left_knee", "left_ankle", 75, 115, "Bend the front knee to about 90 degrees."),
-                new AngleRule("left_shoulder", "left_hip", "left_knee", 150, 180, "Keep your torso upright.")
+                new AngleRule("left_hip", "left_knee", "left_ankle", 75, 115, "Flexiona la rodilla delantera hasta unos 90 grados."),
+                new AngleRule("left_shoulder", "left_hip", "left_knee", 150, 180, "Mantén el torso erguido.")
             );
         }
     }

@@ -27,7 +27,7 @@ class MediaPipePoseStrategyTests {
         PoseAnalysis result = strategy.analyze(squat(new PosePoint("left_ankle", 2, 0, 0.9), 0.9));
 
         assertThat(result.score()).isEqualTo(50.0);
-        assertThat(result.feedback()).containsExactly("Lower your hips until your thighs are near parallel.");
+        assertThat(result.feedback()).containsExactly("Baja la cadera hasta que los muslos queden casi paralelos al suelo.");
     }
 
     @Test
