@@ -2,6 +2,7 @@ package com.fitmentor.auth;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,15 +26,21 @@ public class AuthController {
     }
 
     @PostMapping("/guest")
-    public AuthService.AuthResult guest(@RequestBody(required = false) GuestLoginRequest request) {
+    public AuthService.AuthResult guest(@Valid @RequestBody(required = false) GuestLoginRequest request) {
         return auth.loginAsGuest(request == null ? null : request.name());
     }
 
     /** Google ID token obtained by the frontend (Sign in with Google). */
-    public record GoogleLoginRequest(@NotBlank(message = "credential is required") String credential) {
+    public record GoogleLoginRequest(
+        @NotBlank(message = "credential is required")
+        @Size(max = 4096, message = "credential is too long")
+        String credential) {
     }
 
-    /** Optional display name for a guest. */
-    public record GuestLoginRequest(@Size(max = 120, message = "name must be at most 120 characters") String name) {
+    /** Optional display name for a guest: at most 120 characters, without control characters. */
+    public record GuestLoginRequest(
+        @Size(max = 120, message = "name must be at most 120 characters")
+        @Pattern(regexp = "[^\\p{Cntrl}]*", message = "name contains invalid characters")
+        String name) {
     }
 }

@@ -53,6 +53,16 @@ class AuthFlowIntegrationTests {
     }
 
     @Test
+    void guestLoginRejectsOversizedOrControlCharacterNames() throws Exception {
+        mvc.perform(post("/api/auth/guest").contentType("application/json")
+                .content("{\"name\":\"" + "a".repeat(121) + "\"}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value("validation_error"));
+        mvc.perform(post("/api/auth/guest").contentType("application/json").content("{\"name\":\"a\\u0000b\"}"))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void guestLoginWithoutBodyIsAccepted() throws Exception {
         JsonNode body = login("/api/auth/guest", null);
 

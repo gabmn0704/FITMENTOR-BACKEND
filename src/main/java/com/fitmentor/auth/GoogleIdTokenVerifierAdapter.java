@@ -12,10 +12,12 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.Collections;
+import java.util.List;
 
 /**
- * Adapter over Google's {@link GoogleIdTokenVerifier}: checks signature, expiry and that the
- * token was issued for our OAuth client id ({@code GOOGLE_CLIENT_ID}).
+ * Adapter over Google's {@link GoogleIdTokenVerifier}: checks the signature against Google's
+ * public keys, the expiry, the issuer (accounts.google.com) and that the token was issued for
+ * our OAuth client id ({@code GOOGLE_CLIENT_ID}). The credential is never logged.
  */
 @Component
 public class GoogleIdTokenVerifierAdapter implements GoogleTokenVerifier {
@@ -29,6 +31,7 @@ public class GoogleIdTokenVerifierAdapter implements GoogleTokenVerifier {
             ? null
             : new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), GsonFactory.getDefaultInstance())
                 .setAudience(Collections.singletonList(clientId))
+                .setIssuers(List.of("accounts.google.com", "https://accounts.google.com"))
                 .build();
     }
 
