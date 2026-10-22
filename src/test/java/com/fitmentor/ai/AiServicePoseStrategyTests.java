@@ -11,7 +11,10 @@ import org.springframework.web.client.RestClient;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -72,19 +75,62 @@ class AiServicePoseStrategyTests {
     }
 
     @Test
-    void coachReturnsAnswerOrEmptyWhenUnavailable() throws IOException {
-        HttpServer server = server("/coach", exchange -> {
-            respond(exchange, "{\"answer\":\"Descansa 60 segundos.\"}");
+    void validationErrorFallsBackLocallyWithoutPausingTheService() throws IOException {
+        AtomicInteger calls = new AtomicInteger();
+        HttpServer server = server("/analyze", exchange -> {
+            calls.incrementAndGet();
+            respond(exchange, 422, "{\"detail\":[{\"type\":\"too_long\"}]}");
         });
-        int port = server.getAddress().getPort();
         try {
-            AiServiceClient client = client(port);
+            AiServicePoseStrategy strategy = strategy(server.getAddress().getPort());
 
-            assertThat(client.coach("¿Cuánto descanso?", null)).contains("Descansa 60 segundos.");
+            assertThat(strategy.analyze(frame()).engine()).isEqualTo("local");
+            assertThat(strategy.analyze(frame()).engine()).isEqualTo("local");
+            assertThat(calls.get()).isEqualTo(2);
         } finally {
             server.stop(0);
         }
-        assertThat(client(port).coach("hola", "")).isEmpty();
+    }
+
+    @Test
+    void serverErrorPausesCallsDuringTheCoolDown() throws IOException {
+        AtomicInteger calls = new AtomicInteger();
+        HttpServer server = server("/analyze", exchange -> {
+            calls.incrementAndGet();
+            respond(exchange, 503, "{}");
+        });
+        try {
+            AiServiceClient client = new AiServiceClient(RestClient.builder(),
+                "http://127.0.0.1:" + server.getAddress().getPort(), Duration.ofMinutes(1));
+
+            assertThat(client.analyze(frame())).isEmpty();
+            assertThat(client.analyze(frame())).isEmpty();
+            assertThat(calls.get()).isEqualTo(1);
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void coachSendsStructuredContextAndReturnsSource() throws IOException {
+        AtomicReference<String> requestBody = new AtomicReference<>();
+        HttpServer server = server("/coach", exchange -> {
+            requestBody.set(read(exchange));
+            respond(exchange, "{\"answer\":\"Descansa 60 segundos.\",\"source\":\"claude\"}");
+        });
+        int port = server.getAddress().getPort();
+        try {
+            Optional<AiServiceClient.CoachReply> reply = client(port).coach("¿Cuánto descanso?",
+                new AiServiceClient.CoachContext("squat", 80.0, null, "BEGINNER"));
+
+            assertThat(reply).contains(new AiServiceClient.CoachReply("Descansa 60 segundos.", "claude"));
+            assertThat(requestBody.get())
+                .contains("\"context\":{\"exercise\":\"squat\",\"score\":80.0,\"level\":\"BEGINNER\"}")
+                .doesNotContain("reps");
+        } finally {
+            server.stop(0);
+        }
+        assertThat(client(port).coach("hola", null)).isEmpty();
     }
 
     private static AiServicePoseStrategy strategy(int port) {
@@ -92,7 +138,7 @@ class AiServicePoseStrategyTests {
     }
 
     private static AiServiceClient client(int port) {
-        return new AiServiceClient(RestClient.builder(), "http://127.0.0.1:" + port);
+        return new AiServiceClient(RestClient.builder(), "http://127.0.0.1:" + port, Duration.ZERO);
     }
 
     private static PoseFrame frame() {
@@ -111,9 +157,14 @@ class AiServicePoseStrategyTests {
     }
 
     private static void respond(com.sun.net.httpserver.HttpExchange exchange, String json) throws IOException {
+        respond(exchange, 200, json);
+    }
+
+    private static void respond(com.sun.net.httpserver.HttpExchange exchange, int status, String json) throws IOException {
+        read(exchange);
         byte[] body = json.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type", "application/json");
-        exchange.sendResponseHeaders(200, body.length);
+        exchange.sendResponseHeaders(status, body.length);
         exchange.getResponseBody().write(body);
         exchange.close();
     }
