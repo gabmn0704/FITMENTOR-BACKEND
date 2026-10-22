@@ -58,6 +58,16 @@ public final class StatsCalculator {
             .count();
     }
 
+    /** Consecutive UTC training days ending today (or yesterday when today has no session). */
+    public static int currentStreak(List<CompletedSession> sessions, Instant now) {
+        return streakDays(sessions, day(now));
+    }
+
+    /** Number of distinct exercises performed. */
+    public static int distinctExerciseCount(List<CompletedSession> sessions) {
+        return (int) sessions.stream().map(CompletedSession::exercise).distinct().count();
+    }
+
     static int streakDays(List<CompletedSession> sessions, LocalDate today) {
         Set<LocalDate> days = sessions.stream().map(session -> day(session.createdAt())).collect(Collectors.toSet());
         LocalDate cursor = days.contains(today) ? today : today.minusDays(1);
