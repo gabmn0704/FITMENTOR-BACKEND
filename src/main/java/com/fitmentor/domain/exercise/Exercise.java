@@ -3,7 +3,7 @@ package com.fitmentor.domain.exercise;
 import java.util.List;
 
 /**
- * Product of the Factory Method pattern: an exercise of the catalog.
+ * Product created by {@link ExerciseFactory}: an exercise of the catalog.
  *
  * <p>Each concrete subclass (Squat, PushUp, Plank, Deadlift, Lunge) defines its own
  * metabolic equivalent (MET) and its own posture rules. The local pose analyzer and the

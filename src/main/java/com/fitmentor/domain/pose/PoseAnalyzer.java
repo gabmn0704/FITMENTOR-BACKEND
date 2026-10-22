@@ -8,6 +8,10 @@ import java.util.stream.Collectors;
 /**
  * Context of the Strategy pattern: selects the analysis strategy by engine name.
  * Unknown engines fall back to the local analyzer.
+ *
+ * <p>The live socket always asks for {@code ai-service}; that strategy itself falls back to the
+ * local one when the AI service fails, so in practice the strategy changes at run time with the
+ * availability of the service, frame by frame.
  */
 @Service
 public class PoseAnalyzer {

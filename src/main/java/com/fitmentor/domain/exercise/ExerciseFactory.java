@@ -7,12 +7,15 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 /**
- * Factory Method pattern (variant with a creator registry).
+ * Factory with a registry of creators (a parameterized factory, close to Factory Method).
  *
  * <p>Callers ask for an exercise by id and never call {@code new Squat()} themselves.
- * Each id is bound to a creator (the factory method) that instantiates the concrete
+ * Each id is bound to a creator ({@code Supplier}) that instantiates the concrete
  * product. Adding an exercise means adding one class and one registry entry, without
  * touching the catalog, the analyzer or the calorie code.
+ *
+ * <p>Honest note: the creators are suppliers, not subclasses overriding a creator method, so
+ * this is the "parameterized factory" variant rather than the class-based GoF Factory Method.
  */
 public final class ExerciseFactory {
 

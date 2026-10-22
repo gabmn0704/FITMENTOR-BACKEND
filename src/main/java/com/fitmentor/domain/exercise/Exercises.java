@@ -3,8 +3,8 @@ package com.fitmentor.domain.exercise;
 import java.util.List;
 
 /**
- * Concrete products of the Factory Method pattern. Each nested class is created only
- * through {@link ExerciseFactory}, which keeps construction in one place.
+ * Concrete products of {@link ExerciseFactory}. Each nested class is created only
+ * through the factory, which keeps construction in one place.
  */
 public final class Exercises {
 

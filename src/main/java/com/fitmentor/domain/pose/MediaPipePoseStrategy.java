@@ -11,7 +11,8 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Strategy: local, offline pose analyzer used when the AI service does not answer.
+ * Strategy: local, offline pose analyzer used when the AI service does not answer. The name
+ * refers to the MediaPipe Pose landmarks it receives from the browser; it does not run MediaPipe.
  *
  * <p>It computes the joint angles of the frame and checks them against the posture rules
  * of the exercise. The score is the percentage of evaluated rules that are satisfied.
