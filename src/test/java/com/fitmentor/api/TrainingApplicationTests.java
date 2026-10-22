@@ -28,12 +28,12 @@ class TrainingApplicationTests {
     }
 
     @Test
-    void startupCreatesTrainingSchema() {
+    void startupCreatesUserSchema() {
         Integer tableCount = database.queryForObject(
-            "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'PUBLIC' AND TABLE_NAME IN ('USERS', 'TRAINING_SESSIONS')",
+            "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'PUBLIC' AND TABLE_NAME = 'USERS'",
             Integer.class
         );
 
-        assertThat(tableCount).isEqualTo(2);
+        assertThat(tableCount).isEqualTo(1);
     }
 }

@@ -10,16 +10,5 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-server:
-  port: ${PORT:8080}
 ai:
-  service-url: ${AI_SERVICE_URL:https://fitmentor-ai.onrender.com}
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health
-  endpoint:
-    health:
-      probes:
-        enabled: true
+  service-url: ${AI_SERVICE_URL:https://fitmentor-ai-drmr.onrender.com}
