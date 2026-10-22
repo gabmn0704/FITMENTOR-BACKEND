@@ -26,7 +26,7 @@ public class UserEntity {
     @Column(name = "email", nullable = false, unique = true, length = 180)
     private String email;
 
-    @Column(name = "picture")
+    @Column(name = "picture", columnDefinition = "text")
     private String picture;
 
     @Column(name = "level", nullable = false, length = 30)

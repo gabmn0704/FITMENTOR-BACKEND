@@ -34,7 +34,7 @@ public class RoutinePlanEntity {
     @Column(name = "items", nullable = false)
     private List<RoutinePlan.RoutineItem> items;
 
-    @Column(name = "reason")
+    @Column(name = "reason", columnDefinition = "text")
     private String reason;
 
     @Column(name = "created_at", nullable = false)

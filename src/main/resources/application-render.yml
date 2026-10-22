@@ -1,12 +1,26 @@
+# Production profile (Render). Schema ownership: FITMENTOR-BD/init.sql is the canonical schema.
+# A byte-identical copy lives in db/schema.sql and is applied on every start (it is idempotent),
+# so an empty database is initialized and an existing one is upgraded. Hibernate only validates
+# the mapping against it and never alters tables.
 spring:
   datasource:
-    url: jdbc:postgresql://${DATABASE_HOST}:${DATABASE_PORT}/${DATABASE_NAME}
+    url: jdbc:postgresql://${DATABASE_HOST}:${DATABASE_PORT:5432}/${DATABASE_NAME}
     username: ${DATABASE_USER}
     password: ${DATABASE_PASSWORD}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: ${DATABASE_POOL_SIZE:5}
+  sql:
+    init:
+      mode: ${SCHEMA_INIT_MODE:always}
+      platform: postgresql
+      schema-locations: classpath:db/schema.sql
+      # The script has DO $$ ... $$ blocks: send it as a single statement instead of splitting on ";".
+      separator: "^^^ END OF SCRIPT ^^^"
+      continue-on-error: false
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: ${JPA_DDL_AUTO:validate}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect

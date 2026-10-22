@@ -13,7 +13,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-/** Row of the {@code training_sessions} table. {@code avg_angles} is stored as JSON. */
+/**
+ * Row of the {@code training_sessions} table. {@code avg_angles} is stored as JSON ({@code jsonb}
+ * in PostgreSQL). Column definitions mirror FITMENTOR-BD/init.sql so {@code ddl-auto=validate} passes.
+ */
 @Entity
 @Table(name = "training_sessions")
 public class TrainingSessionEntity {
@@ -31,10 +34,10 @@ public class TrainingSessionEntity {
     @Column(name = "repetitions", nullable = false)
     private int repetitions;
 
-    @Column(name = "accuracy", nullable = false)
+    @Column(name = "accuracy", nullable = false, columnDefinition = "numeric(5,2)")
     private double accuracy;
 
-    @Column(name = "calories", nullable = false)
+    @Column(name = "calories", nullable = false, columnDefinition = "numeric(7,2)")
     private double calories;
 
     @Column(name = "duration_seconds", nullable = false)
