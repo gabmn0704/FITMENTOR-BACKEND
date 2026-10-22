@@ -11,8 +11,10 @@ FROM eclipse-temurin:21-jre
 WORKDIR /app
 RUN useradd --system --uid 10001 fitmentor
 COPY --from=build /app/target/*.jar /app/app.jar
+# The JVM sizes its heap from the container limit (Render instances can have 512 MB).
 ENV SPRING_PROFILES_ACTIVE=render \
-    PORT=8080
+    PORT=8080 \
+    JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError"
 EXPOSE 8080
 USER fitmentor
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
