@@ -1,6 +1,8 @@
 package com.fitmentor.api;
 
 import com.fitmentor.coach.CoachService;
+import com.fitmentor.security.AuthenticatedUser;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -21,17 +23,21 @@ public class CoachController {
     }
 
     @PostMapping
-    public CoachService.CoachAnswer ask(@Valid @RequestBody CoachRequest request) {
-        return coach.ask(request.question(), request.context());
+    public CoachService.CoachAnswer ask(@AuthenticationPrincipal AuthenticatedUser principal,
+                                        @Valid @RequestBody CoachRequest request) {
+        return coach.ask(principal.id(), request.question().strip());
     }
 
-    /** Question of at most 500 characters and optional free context. */
+    /**
+     * Question of at most 500 characters. {@code context} is accepted for compatibility but not
+     * forwarded: the server builds the coach context from the user's profile and last session.
+     */
     public record CoachRequest(
         @NotBlank(message = "question is required")
         @Size(max = 500, message = "question must be at most 500 characters")
         String question,
 
-        @Size(max = 2000, message = "context must be at most 2000 characters")
+        @Size(max = 4000, message = "context must be at most 4000 characters")
         String context
     ) {
     }
