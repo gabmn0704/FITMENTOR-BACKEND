@@ -245,6 +245,76 @@ class AiServicePoseStrategyTests {
         }
     }
 
+    @Test
+    void sharedSecretIsSentAsInternalTokenOnAnalyzeAndCoach() throws IOException {
+        AtomicReference<String> analyzeToken = new AtomicReference<>();
+        AtomicReference<String> coachToken = new AtomicReference<>();
+        HttpServer server = server("/analyze", exchange -> {
+            analyzeToken.set(exchange.getRequestHeaders().getFirst("X-Internal-Token"));
+            respond(exchange, "{\"score\":80,\"feedback\":[],\"analyzed\":true,\"phase\":\"down\",\"reps\":1,\"message\":\"ok\"}");
+        });
+        server.createContext("/coach", exchange -> {
+            coachToken.set(exchange.getRequestHeaders().getFirst("X-Internal-Token"));
+            respond(exchange, "{\"answer\":\"Descansa.\",\"source\":\"rules\"}");
+        });
+        try {
+            AiServiceClient client = clientWithSecret(server.getAddress().getPort(), "s3cret-value");
+
+            assertThat(client.analyze(frame())).isPresent();
+            assertThat(client.coach("hola", null)).isPresent();
+            assertThat(analyzeToken.get()).isEqualTo("s3cret-value");
+            assertThat(coachToken.get()).isEqualTo("s3cret-value");
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void noInternalTokenIsSentWhenSharedSecretIsMissingOrBlank() throws IOException {
+        AtomicReference<String> token = new AtomicReference<>();
+        HttpServer server = server("/analyze", exchange -> {
+            token.set(exchange.getRequestHeaders().getFirst("X-Internal-Token"));
+            respond(exchange, "{\"score\":80,\"feedback\":[],\"analyzed\":true,\"phase\":\"down\",\"reps\":1,\"message\":\"ok\"}");
+        });
+        try {
+            int port = server.getAddress().getPort();
+
+            assertThat(client(port).analyze(frame())).isPresent();
+            assertThat(token.get()).isNull();
+
+            assertThat(clientWithSecret(port, "   ").analyze(frame())).isPresent();
+            assertThat(token.get()).isNull();
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void unauthorizedFromAiFallsBackAndPausesLikeAnyFailure() throws IOException {
+        AtomicInteger analyzeCalls = new AtomicInteger();
+        HttpServer server = server("/analyze", exchange -> {
+            analyzeCalls.incrementAndGet();
+            respond(exchange, 401, "{\"detail\":\"unauthorized\"}");
+        });
+        server.createContext("/coach", exchange -> respond(exchange, 401, "{\"detail\":\"unauthorized\"}"));
+        try {
+            AiServiceClient client = clientWithSecret(server.getAddress().getPort(), "wrong-secret");
+            AiServicePoseStrategy strategy = new AiServicePoseStrategy(client, new MediaPipePoseStrategy());
+
+            assertThat(strategy.analyze(frame()).engine()).isEqualTo("local");
+            assertThat(strategy.analyze(frame()).engine()).isEqualTo("local");
+            assertThat(client.coach("hola", null)).isEmpty();
+            assertThat(analyzeCalls.get()).as("a 401 pauses the operation during the cool-down").isEqualTo(1);
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    private static AiServiceClient clientWithSecret(int port, String sharedSecret) {
+        return new AiServiceClient(RestClient.builder(), "http://127.0.0.1:" + port, Duration.ofMinutes(1),
+            AiServiceClient.COACH_TIMEOUT, sharedSecret);
+    }
+
     private static void sleep(long millis) {
         try {
             Thread.sleep(millis);
