@@ -110,6 +110,7 @@ En desarrollo (sin perfil) se usa H2 en memoria con `ddl-auto: update`.
 | `GOOGLE_CLIENT_ID` | Sí para login Google | Audiencia de los ID tokens de Google. |
 | `FRONTEND_ORIGIN` | Sí en producción (por defecto `*`) | Orígenes permitidos (separados por comas) en CORS y en el handshake WebSocket. Con `*` se avisa en el log. |
 | `AI_SERVICE_URL` | No | URL base de FITMENTOR-IA; sin esquema se antepone `http://` (formato `host:puerto` de Render). Local: `http://localhost:8000`. |
+| `AI_COACH_TIMEOUT_MS` | No (9000) | Tiempo máximo de espera a `/coach` en milisegundos. La IA espera hasta 8 s a Claude; `/analyze` mantiene 1,5 s fijos. Cada operación tiene su propio enfriamiento tras un fallo, así que un fallo de `/coach` no pausa `/analyze`. |
 | `RATE_LIMIT_AUTH_PER_MINUTE`, `RATE_LIMIT_COACH_PER_MINUTE` | No (20 / 30) | Límite de peticiones por IP. |
 | `JPA_DDL_AUTO`, `SCHEMA_INIT_MODE` | No (`validate` / `always`) | Sólo perfil `render`; no cambiarlos salvo para diagnóstico. |
 
