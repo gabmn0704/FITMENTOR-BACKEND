@@ -3,6 +3,7 @@ package com.fitmentor.ws;
 import com.fitmentor.domain.session.LiveTraining;
 import com.fitmentor.security.AuthenticatedUser;
 import com.fitmentor.security.JwtService;
+import com.fitmentor.security.SessionChecker;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -44,10 +45,13 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
     private static final Pattern TOPIC = Pattern.compile("^/topic/(?:feedback|state)\\.([A-Za-z0-9_-]{1,100})$");
 
     private final JwtService jwtService;
+    private final SessionChecker sessions;
     private final ObjectProvider<LiveTrainingRegistry> registry;
 
-    public WebSocketAuthInterceptor(JwtService jwtService, ObjectProvider<LiveTrainingRegistry> registry) {
+    public WebSocketAuthInterceptor(JwtService jwtService, SessionChecker sessions,
+                                    ObjectProvider<LiveTrainingRegistry> registry) {
         this.jwtService = jwtService;
+        this.sessions = sessions;
         this.registry = registry;
     }
 
@@ -74,6 +78,7 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
             return;
         }
         AuthenticatedUser user = jwtService.verify(header.get())
+            .filter(principal -> !sessions.isRevoked(principal))
             .orElseThrow(() -> new MessagingException("Invalid or expired token."));
         accessor.setUser(new UsernamePasswordAuthenticationToken(
             user, null, List.of(new SimpleGrantedAuthority("ROLE_USER"))));

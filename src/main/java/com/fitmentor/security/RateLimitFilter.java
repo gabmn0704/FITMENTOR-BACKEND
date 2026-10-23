@@ -18,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Per-client fixed-window rate limit for the endpoints that are cheap to abuse: login
- * ({@code POST /api/auth/**}, which creates guest users) and the coach ({@code POST /api/coach},
+ * ({@code POST /api/auth/**}: guest creation, registration, Google and password login) and the coach ({@code POST /api/coach},
  * which may call a paid model). The client is the remote address; on Render it is the real
  * client IP because {@code server.forward-headers-strategy=native} trusts only the private proxy.
  * Over the limit the answer is 429 with the usual {@link ApiError} body.

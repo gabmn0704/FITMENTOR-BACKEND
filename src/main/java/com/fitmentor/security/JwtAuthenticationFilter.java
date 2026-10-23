@@ -14,16 +14,19 @@ import java.util.List;
 
 /**
  * Reads {@code Authorization: Bearer <jwt>} and places the verified principal in the
- * security context for this request only (stateless sessions).
+ * security context for this request only (stateless sessions). Revoked tokens are ignored,
+ * so the request stays anonymous and gets the usual 401.
  */
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String PREFIX = "Bearer ";
 
     private final JwtService jwtService;
+    private final SessionChecker sessions;
 
-    public JwtAuthenticationFilter(JwtService jwtService) {
+    public JwtAuthenticationFilter(JwtService jwtService, SessionChecker sessions) {
         this.jwtService = jwtService;
+        this.sessions = sessions;
     }
 
     @Override
@@ -31,11 +34,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         throws ServletException, IOException {
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith(PREFIX)) {
-            jwtService.verify(header.substring(PREFIX.length()).trim()).ifPresent(user -> {
-                var authentication = new UsernamePasswordAuthenticationToken(
-                    user, null, List.of(new SimpleGrantedAuthority("ROLE_USER")));
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-            });
+            jwtService.verify(header.substring(PREFIX.length()).trim())
+                .filter(user -> !sessions.isRevoked(user))
+                .ifPresent(user -> {
+                    var authentication = new UsernamePasswordAuthenticationToken(
+                        user, null, List.of(new SimpleGrantedAuthority("ROLE_USER")));
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                });
         }
         chain.doFilter(request, response);
     }

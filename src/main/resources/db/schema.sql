@@ -15,6 +15,22 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS is_guest BOOLEAN NOT NULL DEFAULT fal
 UPDATE users SET is_guest = false WHERE is_guest IS NULL;
 ALTER TABLE users ALTER COLUMN is_guest SET NOT NULL;
 
+-- Email/password sign-in. BCrypt hash; NULL for Google and guest users.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(100);
+-- Tokens issued before this instant are rejected. Set when Google links an email/password account.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS sessions_valid_after TIMESTAMP WITH TIME ZONE;
+
+-- Emails are compared case-insensitively. The unique index is created only when no two accounts
+-- differ just by case; otherwise it is skipped (NOTICE) so existing data keeps working.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM users GROUP BY lower(email) HAVING COUNT(*) > 1) THEN
+        RAISE NOTICE 'users has emails that differ only by case: unique index users_email_lower_key not created';
+    ELSE
+        CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower_key ON users (lower(email));
+    END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS training_sessions (
     id UUID PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,

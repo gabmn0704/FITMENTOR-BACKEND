@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -101,7 +102,7 @@ class AiServicePoseStrategyTests {
         });
         try {
             AiServiceClient client = new AiServiceClient(RestClient.builder(),
-                "http://127.0.0.1:" + server.getAddress().getPort(), Duration.ofMinutes(1));
+                "http://127.0.0.1:" + server.getAddress().getPort(), Duration.ofMinutes(1), AiServiceClient.COACH_TIMEOUT);
 
             assertThat(client.analyze(frame())).isEmpty();
             assertThat(client.analyze(frame())).isEmpty();
@@ -133,12 +134,131 @@ class AiServicePoseStrategyTests {
         assertThat(client(port).coach("hola", null)).isEmpty();
     }
 
+    @Test
+    void slowCoachAnswerWithinItsTimeoutIsUsed() throws IOException {
+        // The AI service may take several seconds to get Claude's answer; the coach timeout must allow it.
+        HttpServer server = server("/coach", exchange -> {
+            sleep(3000);
+            respond(exchange, "{\"answer\":\"Descansa 60 segundos.\",\"source\":\"claude\"}");
+        });
+        try {
+            AiServiceClient client = new AiServiceClient(RestClient.builder(),
+                "http://127.0.0.1:" + server.getAddress().getPort(), Duration.ofMinutes(1), AiServiceClient.COACH_TIMEOUT);
+
+            assertThat(client.coach("¿Cuánto descanso?", null))
+                .contains(new AiServiceClient.CoachReply("Descansa 60 segundos.", "claude"));
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void analyzeKeepsItsShortTimeoutWhileCoachHasALongerOne() throws IOException {
+        HttpServer server = server("/analyze", exchange -> {
+            sleep(3000);
+            respond(exchange, "{\"score\":80,\"feedback\":[],\"analyzed\":true,\"phase\":\"down\",\"reps\":1,\"message\":\"ok\"}");
+        });
+        try {
+            long started = System.nanoTime();
+            Optional<AiPoseResponse> reply = client(server.getAddress().getPort()).analyze(frame());
+
+            assertThat(reply).isEmpty();
+            assertThat(Duration.ofNanos(System.nanoTime() - started)).isLessThan(Duration.ofMillis(2500));
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void coachTimeoutDoesNotPauseAnalyze() throws IOException {
+        AtomicInteger coachCalls = new AtomicInteger();
+        AtomicInteger analyzeCalls = new AtomicInteger();
+        HttpServer server = server("/coach", exchange -> {
+            coachCalls.incrementAndGet();
+            sleep(1000);
+            respond(exchange, "{\"answer\":\"tarde\",\"source\":\"claude\"}");
+        });
+        server.createContext("/analyze", exchange -> {
+            analyzeCalls.incrementAndGet();
+            respond(exchange, "{\"score\":80,\"feedback\":[],\"analyzed\":true,\"phase\":\"down\",\"reps\":1,\"message\":\"ok\"}");
+        });
+        try {
+            AiServiceClient client = new AiServiceClient(RestClient.builder(),
+                "http://127.0.0.1:" + server.getAddress().getPort(), Duration.ofMinutes(1), Duration.ofMillis(300));
+
+            assertThat(client.coach("hola", null)).isEmpty();
+            assertThat(client.coach("otra vez", null)).isEmpty();
+            assertThat(coachCalls.get()).as("coach is paused after its timeout").isEqualTo(1);
+
+            assertThat(client.analyze(frame())).isPresent();
+            assertThat(analyzeCalls.get()).isEqualTo(1);
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void coachServerErrorDoesNotPauseAnalyzeAndAnalyzeErrorDoesNotPauseCoach() throws IOException {
+        AtomicInteger coachCalls = new AtomicInteger();
+        AtomicInteger analyzeCalls = new AtomicInteger();
+        HttpServer server = server("/coach", exchange -> {
+            coachCalls.incrementAndGet();
+            respond(exchange, 503, "{}");
+        });
+        server.createContext("/analyze", exchange -> {
+            analyzeCalls.incrementAndGet();
+            respond(exchange, 503, "{}");
+        });
+        try {
+            AiServiceClient client = new AiServiceClient(RestClient.builder(),
+                "http://127.0.0.1:" + server.getAddress().getPort(), Duration.ofMinutes(1), AiServiceClient.COACH_TIMEOUT);
+
+            assertThat(client.coach("hola", null)).isEmpty();
+            assertThat(client.analyze(frame())).isEmpty();
+            // Each breaker tripped on its own failure: no further calls to either operation.
+            assertThat(client.coach("hola", null)).isEmpty();
+            assertThat(client.analyze(frame())).isEmpty();
+            assertThat(coachCalls.get()).isEqualTo(1);
+            assertThat(analyzeCalls.get()).isEqualTo(1);
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void analyzeFailureDoesNotPauseCoach() throws IOException {
+        AtomicInteger coachCalls = new AtomicInteger();
+        HttpServer server = server("/analyze", exchange -> respond(exchange, 503, "{}"));
+        server.createContext("/coach", exchange -> {
+            coachCalls.incrementAndGet();
+            respond(exchange, "{\"answer\":\"Descansa.\",\"source\":\"rules\"}");
+        });
+        try {
+            AiServiceClient client = new AiServiceClient(RestClient.builder(),
+                "http://127.0.0.1:" + server.getAddress().getPort(), Duration.ofMinutes(1), AiServiceClient.COACH_TIMEOUT);
+
+            assertThat(client.analyze(frame())).isEmpty();
+            assertThat(client.coach("hola", null)).isPresent();
+            assertThat(coachCalls.get()).isEqualTo(1);
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    private static void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
     private static AiServicePoseStrategy strategy(int port) {
         return new AiServicePoseStrategy(client(port), new MediaPipePoseStrategy());
     }
 
     private static AiServiceClient client(int port) {
-        return new AiServiceClient(RestClient.builder(), "http://127.0.0.1:" + port, Duration.ZERO);
+        return new AiServiceClient(RestClient.builder(), "http://127.0.0.1:" + port, Duration.ZERO, AiServiceClient.COACH_TIMEOUT);
     }
 
     private static PoseFrame frame() {
@@ -147,6 +267,12 @@ class AiServicePoseStrategyTests {
 
     private static HttpServer server(String path, com.sun.net.httpserver.HttpHandler handler) throws IOException {
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        // One thread per request: a slow handler must not block the other endpoint in the same test.
+        server.setExecutor(Executors.newCachedThreadPool(task -> {
+            Thread thread = new Thread(task);
+            thread.setDaemon(true);
+            return thread;
+        }));
         server.createContext(path, handler);
         server.start();
         return server;

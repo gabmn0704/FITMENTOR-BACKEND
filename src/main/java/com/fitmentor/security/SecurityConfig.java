@@ -14,6 +14,8 @@ import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -40,8 +42,9 @@ public class SecurityConfig {
     };
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtService jwtService, ObjectMapper objectMapper,
-                                                   FitmentorProperties properties, Clock clock) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtService jwtService, SessionChecker sessions,
+                                                   ObjectMapper objectMapper, FitmentorProperties properties,
+                                                   Clock clock) throws Exception {
         return http
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource(properties)))
@@ -51,10 +54,16 @@ public class SecurityConfig {
                 .requestMatchers(PUBLIC_PATHS).permitAll()
                 .anyRequest().authenticated())
             .exceptionHandling(handling -> handling.authenticationEntryPoint(unauthorized(objectMapper)))
-            .addFilterBefore(new JwtAuthenticationFilter(jwtService), UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(new JwtAuthenticationFilter(jwtService, sessions), UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(new RateLimitFilter(objectMapper, clock,
                 properties.rateLimit().authPerMinute(), properties.rateLimit().coachPerMinute()), JwtAuthenticationFilter.class)
             .build();
+    }
+
+    /** BCrypt (default strength) for email/password accounts. */
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 
     /** CORS from {@code FRONTEND_ORIGIN}; a single "*" allows any origin. */

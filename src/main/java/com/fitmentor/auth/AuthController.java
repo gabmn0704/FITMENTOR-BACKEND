@@ -1,6 +1,8 @@
 package com.fitmentor.auth;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -30,6 +32,16 @@ public class AuthController {
         return auth.loginAsGuest(request == null ? null : request.name());
     }
 
+    @PostMapping("/register")
+    public AuthService.AuthResult register(@Valid @RequestBody RegisterRequest request) {
+        return auth.register(request.name(), request.email(), request.password());
+    }
+
+    @PostMapping("/login")
+    public AuthService.AuthResult login(@Valid @RequestBody LoginRequest request) {
+        return auth.loginWithPassword(request.email(), request.password());
+    }
+
     /** Google ID token obtained by the frontend (Sign in with Google). */
     public record GoogleLoginRequest(
         @NotBlank(message = "credential is required")
@@ -42,5 +54,56 @@ public class AuthController {
         @Size(max = 120, message = "name must be at most 120 characters")
         @Pattern(regexp = "[^\\p{Cntrl}]*", message = "name contains invalid characters")
         String name) {
+    }
+
+    /** Email/password registration. The password is never echoed back or logged. */
+    public record RegisterRequest(
+        @NotBlank(message = "name is required")
+        @Size(max = 60, message = "name must be at most 60 characters")
+        @Pattern(regexp = "[^\\p{Cntrl}]*", message = "name contains invalid characters")
+        String name,
+
+        @NotBlank(message = "email is required")
+        @Email(message = "email is not valid")
+        @Size(max = 180, message = "email must be at most 180 characters")
+        String email,
+
+        @NotBlank(message = "password is required")
+        @Size(min = PasswordPolicy.MIN_LENGTH, max = PasswordPolicy.MAX_LENGTH,
+            message = "password must be between 8 and 72 characters")
+        String password) {
+
+        @AssertTrue(message = "password is too long")
+        public boolean isPasswordWithinBcryptLimit() {
+            return PasswordPolicy.fitsBcryptLimit(password);
+        }
+
+        /** Never includes the password, so it cannot leak through logs or debugging output. */
+        @Override
+        public String toString() {
+            return "RegisterRequest[name=" + name + ", email=" + email + ", password=********]";
+        }
+    }
+
+    /** Email/password login. Validation only checks the shape; wrong credentials get a generic 401. */
+    public record LoginRequest(
+        @NotBlank(message = "email is required")
+        @Size(max = 180, message = "email must be at most 180 characters")
+        String email,
+
+        @NotBlank(message = "password is required")
+        @Size(max = PasswordPolicy.MAX_LENGTH, message = "password must be at most 72 characters")
+        String password) {
+
+        @AssertTrue(message = "password is too long")
+        public boolean isPasswordWithinBcryptLimit() {
+            return PasswordPolicy.fitsBcryptLimit(password);
+        }
+
+        /** Never includes the password, so it cannot leak through logs or debugging output. */
+        @Override
+        public String toString() {
+            return "LoginRequest[email=" + email + ", password=********]";
+        }
     }
 }

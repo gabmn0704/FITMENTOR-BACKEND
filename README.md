@@ -59,6 +59,8 @@ Base: `/api`. Salvo los públicos, todas las rutas exigen `Authorization: Bearer
 | GET | `/actuator/health` | Público. Sonda de salud para Render. |
 | POST | `/api/auth/google` | `{credential}` → `{token, user}`. Verifica firma, caducidad, emisor (`accounts.google.com`) y audiencia `GOOGLE_CLIENT_ID`. |
 | POST | `/api/auth/guest` | `{name?}` (≤ 120, sin caracteres de control) → `{token, user}`. Invitado con email `guest-<uuid>@guest.fitmentor.local`. |
+| POST | `/api/auth/register` | `{name (1–60), email (válido, ≤ 180), password (8–72 caracteres; ≤ 72 bytes UTF-8)}` → `{token, user}`. El correo se guarda en minúsculas. Correo repetido → `409 email_taken` («Ese correo ya está registrado»). La contraseña se guarda solo como hash BCrypt. |
+| POST | `/api/auth/login` | `{email, password}` → `{token, user}`. Credenciales no válidas → `401 invalid_credentials` («Correo o contraseña incorrectos»), igual para correo inexistente, contraseña errónea o cuenta sin contraseña (Google o invitado). |
 | GET | `/api/me` | Perfil del usuario. |
 | PATCH | `/api/me` | `{name?, level?, goal?}`. `level`: `BEGINNER`, `INTERMEDIATE`, `ADVANCED`. |
 | POST | `/api/sessions` | `{exercise, reps, accuracy, durationSeconds, avgAngles?}` → `201` con la sesión y sus calorías (MET × 70 kg × horas). `avgAngles`: ≤ 20 claves de ≤ 40 caracteres, valores −360…360. |
@@ -70,7 +72,7 @@ Base: `/api`. Salvo los públicos, todas las rutas exigen `Authorization: Bearer
 | GET | `/api/exercises/next?from=squat` | Progresiones más difíciles, con `distance`. |
 | POST | `/api/coach` | `{question (≤ 500), context? (≤ 4000, se ignora)}` → `{answer, source}` con `source` = `claude` (respondió Claude a través de la IA) o `rules` (reglas de la IA o, si la IA no responde, reglas locales). El contexto que recibe la IA lo arma el servidor: nivel del usuario y su última sesión (ejercicio, precisión, reps). |
 
-Errores: `{error, message}` sin trazas. Códigos habituales: `validation_error` (400), `bad_request` (400), `unknown_exercise` (400), `unauthorized` / `unknown_user` (401), `invalid_google_token` (401), `not_found` (404), `rate_limited` (429, con `Retry-After`), `google_not_configured` / `google_unavailable` (503).
+Errores: `{error, message}` sin trazas. Códigos habituales: `validation_error` (400), `bad_request` (400), `unknown_exercise` (400), `unauthorized` / `unknown_user` / `invalid_credentials` (401), `invalid_google_token` (401), `email_taken` (409), `not_found` (404), `rate_limited` (429, con `Retry-After`), `google_not_configured` / `google_unavailable` (503).
 
 Límite de peticiones por IP y minuto: `POST /api/auth/**` 20 y `POST /api/coach` 30 (configurables).
 
@@ -108,6 +110,7 @@ En desarrollo (sin perfil) se usa H2 en memoria con `ddl-auto: update`.
 | `GOOGLE_CLIENT_ID` | Sí para login Google | Audiencia de los ID tokens de Google. |
 | `FRONTEND_ORIGIN` | Sí en producción (por defecto `*`) | Orígenes permitidos (separados por comas) en CORS y en el handshake WebSocket. Con `*` se avisa en el log. |
 | `AI_SERVICE_URL` | No | URL base de FITMENTOR-IA; sin esquema se antepone `http://` (formato `host:puerto` de Render). Local: `http://localhost:8000`. |
+| `AI_COACH_TIMEOUT_MS` | No (9000) | Tiempo máximo de espera a `/coach` en milisegundos. La IA espera hasta 8 s a Claude; `/analyze` mantiene 1,5 s fijos. Cada operación tiene su propio enfriamiento tras un fallo, así que un fallo de `/coach` no pausa `/analyze`. |
 | `RATE_LIMIT_AUTH_PER_MINUTE`, `RATE_LIMIT_COACH_PER_MINUTE` | No (20 / 30) | Límite de peticiones por IP. |
 | `JPA_DDL_AUTO`, `SCHEMA_INIT_MODE` | No (`validate` / `always`) | Sólo perfil `render`; no cambiarlos salvo para diagnóstico. |
 
@@ -132,6 +135,7 @@ curl -s localhost:8080/api/stats -H "Authorization: Bearer $TOKEN"
 ## Pruebas
 
 - Unitarias: calorías, stats, rutina (Template Method), logros, fábrica de ejercicios, máquina de estados, comandos con Memento, Observer y Decorator, Builder, cadena de validación, análisis local, JWT, adaptador de Google, límite de peticiones, control de acceso STOMP y límites de memoria.
+- Registro y login con email y contraseña: unitarias (`AuthServiceTests`, límite BCrypt en bytes) e integración (`PasswordAuthIntegrationTests`: duplicados, credenciales erróneas, invitado y Google sin contraseña, validación).
 - Integración (siempre): flujo de sesiones con MockMvc (aislamiento entre usuarios, usuario borrado), autenticación, cliente STOMP real contra el servidor embebido, respaldo local con la IA caída y cliente de IA contra un servidor HTTP de prueba (incluido el 422).
 - Integración opcional contra servicios reales:
 
