@@ -6,6 +6,7 @@ import com.fitmentor.user.UserEntity;
 import com.fitmentor.user.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -19,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -44,7 +46,7 @@ class AuthServiceTests {
         // Low BCrypt cost keeps the unit tests fast; the production bean uses the default cost.
         encoder = spy(new BCryptPasswordEncoder(4));
         auth = new AuthService(mock(GoogleTokenVerifier.class), users, jwt, encoder);
-        when(jwt.issue(any(UUID.class), anyBoolean())).thenReturn("token");
+        when(jwt.issue(any(UUID.class), anyBoolean(), anyLong())).thenReturn("token");
     }
 
     @Test
@@ -55,11 +57,15 @@ class AuthServiceTests {
 
         AuthService.AuthResult result = auth.register("  Ana ", "  Ana.Lopez@Example.COM ", PASSWORD);
 
-        verify(users).createPasswordUser(eq("Ana"), eq("ana.lopez@example.com"), anyString());
+        ArgumentCaptor<String> hash = ArgumentCaptor.forClass(String.class);
+        verify(users).createPasswordUser(eq("Ana"), eq("ana.lopez@example.com"), hash.capture());
+        assertThat(hash.getValue())
+            .isNotEqualTo(PASSWORD)
+            .startsWith("$2");
+        assertThat(encoder.matches(PASSWORD, hash.getValue())).isTrue();
         assertThat(result.token()).isEqualTo("token");
         assertThat(result.user().guest()).isFalse();
         assertThat(result.user().email()).isEqualTo("ana.lopez@example.com");
-        assertThat(result.user().toString()).doesNotContain(PASSWORD).doesNotContain("$2");
     }
 
     @Test
@@ -79,12 +85,32 @@ class AuthServiceTests {
 
     @Test
     void registerMapsConcurrentDuplicateToConflict() {
-        when(users.findByEmail(anyString())).thenReturn(Optional.empty());
+        // Not visible at the first check, visible once the insert has failed on the unique index.
+        UserEntity winner = passwordUser("Ana", "ana@example.com", "x");
+        when(users.findByEmail(anyString())).thenReturn(Optional.empty(), Optional.of(winner));
         when(users.createPasswordUser(anyString(), anyString(), anyString()))
             .thenThrow(new DataIntegrityViolationException("unique"));
 
         assertThatThrownBy(() -> auth.register("Ana", "ana@example.com", PASSWORD))
             .isInstanceOfSatisfying(ApiException.class, api -> assertThat(api.status()).isEqualTo(HttpStatus.CONFLICT));
+    }
+
+    @Test
+    void registerRethrowsIntegrityErrorThatIsNotADuplicate() {
+        when(users.findByEmail(anyString())).thenReturn(Optional.empty());
+        when(users.createPasswordUser(anyString(), anyString(), anyString()))
+            .thenThrow(new DataIntegrityViolationException("not-email"));
+
+        assertThatThrownBy(() -> auth.register("Ana", "ana@example.com", PASSWORD))
+            .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void requestToStringNeverShowsThePassword() {
+        assertThat(new AuthController.RegisterRequest("Ana", "ana@example.com", PASSWORD).toString())
+            .doesNotContain(PASSWORD);
+        assertThat(new AuthController.LoginRequest("ana@example.com", PASSWORD).toString())
+            .doesNotContain(PASSWORD);
     }
 
     @Test

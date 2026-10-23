@@ -63,8 +63,12 @@ public class AuthService {
         String hash = passwordEncoder.encode(password);
         try {
             return result(users.createPasswordUser(name.trim(), normalizedEmail, hash));
-        } catch (DataIntegrityViolationException concurrentDuplicate) {
-            throw emailTaken();
+        } catch (DataIntegrityViolationException violation) {
+            // Only a concurrent registration of the same email is a conflict; anything else is rethrown.
+            if (users.findByEmail(normalizedEmail).isPresent()) {
+                throw emailTaken();
+            }
+            throw violation;
         }
     }
 
@@ -83,7 +87,7 @@ public class AuthService {
     }
 
     private AuthResult result(UserEntity user) {
-        return new AuthResult(jwt.issue(user.getId(), user.isGuest()), UserResponse.from(user));
+        return new AuthResult(jwt.issue(user.getId(), user.isGuest(), user.sessionMarker()), UserResponse.from(user));
     }
 
     private static String normalizeEmail(String email) {

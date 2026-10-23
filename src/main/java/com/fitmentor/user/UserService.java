@@ -6,6 +6,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.time.temporal.ChronoUnit;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -45,11 +47,13 @@ public class UserService {
     /** Creates a user or refreshes the Google profile of an existing one, matched by google id then email. */
     @Transactional
     public UserEntity upsertGoogleUser(String googleId, String email, String name, String picture) {
+        String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
         UserEntity user = users.findByGoogleId(googleId)
-            .or(() -> users.findByEmailIgnoreCase(email).map(UserService::revokePassword))
-            .orElseGet(() -> new UserEntity(UUID.randomUUID(), displayName(name, email), email, false, clock.instant()));
+            .or(() -> users.findByEmailIgnoreCase(normalizedEmail).map(this::revokePassword))
+            .orElseGet(() -> new UserEntity(UUID.randomUUID(), displayName(name, normalizedEmail), normalizedEmail,
+                false, clock.instant()));
         user.setGoogleId(googleId);
-        user.setEmail(email);
+        user.setEmail(normalizedEmail);
         if (name != null && !name.isBlank()) {
             user.setName(name.trim());
         }
@@ -84,10 +88,13 @@ public class UserService {
 
     /**
      * Google linked to an account that was created with email/password. Google has verified the
-     * address, so the real owner takes the account over: any previous password stops working.
+     * address, so the real owner takes the account over: the password stops working and every token
+     * issued before now (including one an attacker obtained with that password) stops working too.
+     * The instant is truncated to milliseconds, the precision of the token marker.
      */
-    private static UserEntity revokePassword(UserEntity existing) {
+    private UserEntity revokePassword(UserEntity existing) {
         existing.setPasswordHash(null);
+        existing.setSessionsValidAfter(clock.instant().truncatedTo(ChronoUnit.MILLIS));
         return existing;
     }
 

@@ -77,6 +77,12 @@ public class AuthController {
         public boolean isPasswordWithinBcryptLimit() {
             return PasswordPolicy.fitsBcryptLimit(password);
         }
+
+        /** Never includes the password, so it cannot leak through logs or debugging output. */
+        @Override
+        public String toString() {
+            return "RegisterRequest[name=" + name + ", email=" + email + ", password=********]";
+        }
     }
 
     /** Email/password login. Validation only checks the shape; wrong credentials get a generic 401. */
@@ -92,6 +98,12 @@ public class AuthController {
         @AssertTrue(message = "password is too long")
         public boolean isPasswordWithinBcryptLimit() {
             return PasswordPolicy.fitsBcryptLimit(password);
+        }
+
+        /** Never includes the password, so it cannot leak through logs or debugging output. */
+        @Override
+        public String toString() {
+            return "LoginRequest[email=" + email + ", password=********]";
         }
     }
 }

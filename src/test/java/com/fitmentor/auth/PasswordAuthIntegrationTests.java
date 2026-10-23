@@ -142,6 +142,29 @@ class PasswordAuthIntegrationTests {
     }
 
     @Test
+    void googleLinkInvalidatesTokensIssuedBeforeTheLink() throws Exception {
+        String email = uniqueEmail("Tokens");
+        String attackerToken = register("Atacante", email, PASSWORD).path("token").asText();
+        mvc.perform(get("/api/me").header("Authorization", "Bearer " + attackerToken))
+            .andExpect(status().isOk());
+
+        // Google reports the address in upper case; the account is still found and linked.
+        when(googleVerifier.verify(eq("tokens-credential"))).thenReturn(
+            new GoogleProfile("google-sub-tokens-" + System.nanoTime(), email.toUpperCase(), true, "Dueño", null));
+        String ownerToken = json.readTree(mvc.perform(post("/api/auth/google").contentType("application/json")
+                .content("{\"credential\":\"tokens-credential\"}"))
+            .andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString()).path("token").asText();
+
+        mvc.perform(get("/api/me").header("Authorization", "Bearer " + attackerToken))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.error").value("unauthorized"));
+        mvc.perform(get("/api/me").header("Authorization", "Bearer " + ownerToken))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.email").value(email));
+    }
+
+    @Test
     void shortPasswordIsRejected() throws Exception {
         mvc.perform(post("/api/auth/register").contentType("application/json")
                 .content(registerBody("Ana", uniqueEmail("Corta"), "1234567")))

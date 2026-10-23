@@ -42,8 +42,9 @@ public class SecurityConfig {
     };
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtService jwtService, ObjectMapper objectMapper,
-                                                   FitmentorProperties properties, Clock clock) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtService jwtService, SessionChecker sessions,
+                                                   ObjectMapper objectMapper, FitmentorProperties properties,
+                                                   Clock clock) throws Exception {
         return http
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource(properties)))
@@ -53,7 +54,7 @@ public class SecurityConfig {
                 .requestMatchers(PUBLIC_PATHS).permitAll()
                 .anyRequest().authenticated())
             .exceptionHandling(handling -> handling.authenticationEntryPoint(unauthorized(objectMapper)))
-            .addFilterBefore(new JwtAuthenticationFilter(jwtService), UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(new JwtAuthenticationFilter(jwtService, sessions), UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(new RateLimitFilter(objectMapper, clock,
                 properties.rateLimit().authPerMinute(), properties.rateLimit().coachPerMinute()), JwtAuthenticationFilter.class)
             .build();
