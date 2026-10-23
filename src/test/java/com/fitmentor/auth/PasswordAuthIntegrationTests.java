@@ -125,6 +125,23 @@ class PasswordAuthIntegrationTests {
     }
 
     @Test
+    void googleLinkRevokesPasswordSetBeforeByAnotherPerson() throws Exception {
+        // Someone registers the victim's address with their own password (no email verification).
+        String email = uniqueEmail("Takeover");
+        register("Atacante", email, PASSWORD);
+
+        // The real owner signs in with Google, which verifies the address and links the account.
+        when(googleVerifier.verify(eq("takeover-credential"))).thenReturn(
+            new GoogleProfile("google-sub-takeover-" + System.nanoTime(), email, true, "Dueño", null));
+        mvc.perform(post("/api/auth/google").contentType("application/json")
+                .content("{\"credential\":\"takeover-credential\"}"))
+            .andExpect(status().isOk());
+
+        // The previous password no longer grants access.
+        assertInvalidCredentials(email, PASSWORD);
+    }
+
+    @Test
     void shortPasswordIsRejected() throws Exception {
         mvc.perform(post("/api/auth/register").contentType("application/json")
                 .content(registerBody("Ana", uniqueEmail("Corta"), "1234567")))

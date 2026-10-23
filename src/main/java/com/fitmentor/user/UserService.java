@@ -46,7 +46,7 @@ public class UserService {
     @Transactional
     public UserEntity upsertGoogleUser(String googleId, String email, String name, String picture) {
         UserEntity user = users.findByGoogleId(googleId)
-            .or(() -> users.findByEmail(email))
+            .or(() -> users.findByEmailIgnoreCase(email).map(UserService::revokePassword))
             .orElseGet(() -> new UserEntity(UUID.randomUUID(), displayName(name, email), email, false, clock.instant()));
         user.setGoogleId(googleId);
         user.setEmail(email);
@@ -80,6 +80,15 @@ public class UserService {
         UUID id = UUID.randomUUID();
         String email = "guest-" + id + "@guest.fitmentor.local";
         return users.save(new UserEntity(id, displayName(name, "Invitado"), email, true, clock.instant()));
+    }
+
+    /**
+     * Google linked to an account that was created with email/password. Google has verified the
+     * address, so the real owner takes the account over: any previous password stops working.
+     */
+    private static UserEntity revokePassword(UserEntity existing) {
+        existing.setPasswordHash(null);
+        return existing;
     }
 
     private static String displayName(String name, String fallback) {
