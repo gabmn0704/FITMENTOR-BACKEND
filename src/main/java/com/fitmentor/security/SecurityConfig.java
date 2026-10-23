@@ -14,6 +14,8 @@ import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -55,6 +57,12 @@ public class SecurityConfig {
             .addFilterBefore(new RateLimitFilter(objectMapper, clock,
                 properties.rateLimit().authPerMinute(), properties.rateLimit().coachPerMinute()), JwtAuthenticationFilter.class)
             .build();
+    }
+
+    /** BCrypt (default strength) for email/password accounts. */
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 
     /** CORS from {@code FRONTEND_ORIGIN}; a single "*" allows any origin. */

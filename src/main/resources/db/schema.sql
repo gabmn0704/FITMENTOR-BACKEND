@@ -15,6 +15,9 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS is_guest BOOLEAN NOT NULL DEFAULT fal
 UPDATE users SET is_guest = false WHERE is_guest IS NULL;
 ALTER TABLE users ALTER COLUMN is_guest SET NOT NULL;
 
+-- Email/password sign-in. BCrypt hash; NULL for Google and guest users.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(100);
+
 CREATE TABLE IF NOT EXISTS training_sessions (
     id UUID PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,

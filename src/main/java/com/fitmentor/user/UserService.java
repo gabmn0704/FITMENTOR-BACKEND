@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.util.Optional;
 import java.util.UUID;
 
 /** Loads and updates the profile of the authenticated user. Every call is scoped to one id. */
@@ -54,6 +55,23 @@ public class UserService {
         }
         user.setPicture(picture);
         return users.save(user);
+    }
+
+    /** Case-insensitive lookup by email, used by the email/password flows. */
+    @Transactional(readOnly = true)
+    public Optional<UserEntity> findByEmail(String email) {
+        return users.findByEmailIgnoreCase(email);
+    }
+
+    /**
+     * Creates an email/password user. The caller hashes the password and normalizes the email.
+     * Flushes immediately so a concurrent duplicate surfaces as a data integrity error in the caller.
+     */
+    @Transactional
+    public UserEntity createPasswordUser(String name, String email, String passwordHash) {
+        UserEntity user = new UserEntity(UUID.randomUUID(), name.trim(), email, false, clock.instant());
+        user.setPasswordHash(passwordHash);
+        return users.saveAndFlush(user);
     }
 
     /** Creates a guest with a unique synthetic email, as agreed with the database schema. */

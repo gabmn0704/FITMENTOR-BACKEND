@@ -38,6 +38,10 @@ public class UserEntity {
     @Column(name = "is_guest", nullable = false)
     private boolean guest;
 
+    /** BCrypt hash for email/password sign-in. Null for Google and guest users. Never exposed in responses. */
+    @Column(name = "password_hash", length = 100)
+    private String passwordHash;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -67,5 +71,7 @@ public class UserEntity {
     public String getGoal() { return goal; }
     public void setGoal(String goal) { this.goal = goal; }
     public boolean isGuest() { return guest; }
+    public String getPasswordHash() { return passwordHash; }
+    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
     public Instant getCreatedAt() { return createdAt; }
 }
