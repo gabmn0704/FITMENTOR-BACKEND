@@ -28,7 +28,11 @@ import java.util.Optional;
  *       for Claude, so a shorter timeout would always cut the answer off.</li>
  * </ul>
  * A failure of one operation never pauses the other. A 4xx answer (the service returns 422 when a
- * frame or question fails its validation) only drops that request.
+ * frame or question fails its validation) only drops that request. A 401 means the shared secret
+ * does not match: it counts as a failure (cool-down and a warning, never the secret itself).
+ *
+ * <p>When {@code ai.shared-secret} is set, every request carries it in the {@code X-Internal-Token}
+ * header, which the AI service checks. The value is never logged.
  */
 @Component
 public class AiServiceClient {
@@ -36,6 +40,7 @@ public class AiServiceClient {
     static final Duration TIMEOUT = Duration.ofMillis(1500);
     static final Duration COACH_TIMEOUT = Duration.ofSeconds(9);
     static final Duration COOL_DOWN = Duration.ofSeconds(5);
+    static final String TOKEN_HEADER = "X-Internal-Token";
 
     private static final Logger logger = LoggerFactory.getLogger(AiServiceClient.class);
 
@@ -48,14 +53,22 @@ public class AiServiceClient {
     @Autowired
     public AiServiceClient(RestClient.Builder builder,
                            @Value("${ai.service-url}") String serviceUrl,
-                           @Value("${ai.coach-timeout-ms:9000}") long coachTimeoutMs) {
-        this(builder, serviceUrl, COOL_DOWN, coachTimeoutMs > 0 ? Duration.ofMillis(coachTimeoutMs) : COACH_TIMEOUT);
+                           @Value("${ai.coach-timeout-ms:9000}") long coachTimeoutMs,
+                           @Value("${ai.shared-secret:}") String sharedSecret) {
+        this(builder, serviceUrl, COOL_DOWN,
+            coachTimeoutMs > 0 ? Duration.ofMillis(coachTimeoutMs) : COACH_TIMEOUT, sharedSecret);
     }
 
     AiServiceClient(RestClient.Builder builder, String serviceUrl, Duration coolDown, Duration coachTimeout) {
+        this(builder, serviceUrl, coolDown, coachTimeout, "");
+    }
+
+    AiServiceClient(RestClient.Builder builder, String serviceUrl, Duration coolDown, Duration coachTimeout,
+                    String sharedSecret) {
         String baseUrl = withScheme(serviceUrl);
-        this.poseHttp = client(builder, baseUrl, TIMEOUT);
-        this.coachHttp = client(builder, baseUrl, coachTimeout);
+        String token = sharedSecret == null ? "" : sharedSecret.trim();
+        this.poseHttp = client(builder, baseUrl, TIMEOUT, token);
+        this.coachHttp = client(builder, baseUrl, coachTimeout, token);
         this.coolDown = coolDown;
         this.poseBreaker = new CoolDown(coolDown);
         this.coachBreaker = new CoolDown(coolDown);
@@ -99,6 +112,13 @@ public class AiServiceClient {
     }
 
     private void failed(String operation, CoolDown breaker, RestClientException exception) {
+        if (exception instanceof HttpClientErrorException clientError && clientError.getStatusCode().value() == 401) {
+            // Shared secret missing or different on one side: an operator error, treated as a service failure.
+            breaker.trip();
+            logger.warn("AI {} service rejected the internal token (401); check AI_SHARED_SECRET on both services. "
+                + "Using the local fallback for {} s", operation, coolDown.toSeconds());
+            return;
+        }
         if (exception instanceof HttpClientErrorException clientError) {
             // Validation rejections (422) and other 4xx: the service is up, only this request is dropped.
             logger.debug("AI {} request rejected with status {}", operation, clientError.getStatusCode().value());
@@ -109,14 +129,17 @@ public class AiServiceClient {
             operation, exception.getClass().getSimpleName(), coolDown.toSeconds());
     }
 
-    private static RestClient client(RestClient.Builder builder, String baseUrl, Duration readTimeout) {
+    private static RestClient client(RestClient.Builder builder, String baseUrl, Duration readTimeout, String sharedSecret) {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(TIMEOUT);
         requestFactory.setReadTimeout(readTimeout);
-        return builder.clone()
+        RestClient.Builder configured = builder.clone()
             .baseUrl(baseUrl)
-            .requestFactory(requestFactory)
-            .build();
+            .requestFactory(requestFactory);
+        if (!sharedSecret.isEmpty()) {
+            configured.defaultHeader(TOKEN_HEADER, sharedSecret);
+        }
+        return configured.build();
     }
 
     static String withScheme(String url) {

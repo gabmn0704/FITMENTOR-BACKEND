@@ -18,6 +18,8 @@ ai:
   service-url: ${AI_SERVICE_URL:http://localhost:8000}
   # Read timeout for /coach (the AI service waits up to 8 s for Claude). /analyze keeps 1.5 s.
   coach-timeout-ms: ${AI_COACH_TIMEOUT_MS:9000}
+  # Shared secret sent as X-Internal-Token to the AI service. Must match its AI_SHARED_SECRET. Empty = not sent.
+  shared-secret: ${AI_SHARED_SECRET:}
 fitmentor:
   jwt:
     secret: ${JWT_SECRET:}
