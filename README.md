@@ -110,6 +110,7 @@ En desarrollo (sin perfil) se usa H2 en memoria con `ddl-auto: update`.
 | `GOOGLE_CLIENT_ID` | Sí para login Google | Audiencia de los ID tokens de Google. |
 | `FRONTEND_ORIGIN` | Sí en producción (por defecto `*`) | Orígenes permitidos (separados por comas) en CORS y en el handshake WebSocket. Con `*` se avisa en el log. |
 | `AI_SERVICE_URL` | No | URL base de FITMENTOR-IA; sin esquema se antepone `http://` (formato `host:puerto` de Render). Local: `http://localhost:8000`. |
+| `AI_SHARED_SECRET` | Sí si la IA la exige | Secreto que se envía en la cabecera `X-Internal-Token` en cada petición a `/analyze` y `/coach`. Debe ser idéntico a `AI_SHARED_SECRET` de FITMENTOR-IA. Vacío = no se envía. Nunca se registra en logs. Si la IA responde `401`, se usa el fallback local y se avisa en el log (sin mostrar el secreto). |
 | `AI_COACH_TIMEOUT_MS` | No (9000) | Tiempo máximo de espera a `/coach` en milisegundos. La IA espera hasta 8 s a Claude; `/analyze` mantiene 1,5 s fijos. Cada operación tiene su propio enfriamiento tras un fallo, así que un fallo de `/coach` no pausa `/analyze`. |
 | `RATE_LIMIT_AUTH_PER_MINUTE`, `RATE_LIMIT_COACH_PER_MINUTE` | No (20 / 30) | Límite de peticiones por IP. |
 | `JPA_DDL_AUTO`, `SCHEMA_INIT_MODE` | No (`validate` / `always`) | Sólo perfil `render`; no cambiarlos salvo para diagnóstico. |
@@ -151,7 +152,7 @@ FITMENTOR_TEST_AI_URL=http://127.0.0.1:8000 ./mvnw test -Dtest=AiServiceStompInt
 ## Despliegue (Render)
 
 1. Crea el servicio desde `render.yaml` (Blueprint), que también crea la base PostgreSQL `fitmentor-db`.
-2. Define `GOOGLE_CLIENT_ID`, `FRONTEND_ORIGIN` y `AI_SERVICE_URL` en el panel. `JWT_SECRET` se genera solo.
+2. Define `GOOGLE_CLIENT_ID`, `FRONTEND_ORIGIN`, `AI_SERVICE_URL` y `AI_SHARED_SECRET` en el panel. `JWT_SECRET` se genera solo. `AI_SHARED_SECRET` debe coincidir con la del servicio de IA.
 3. El `Dockerfile` es multi-etapa: compila con `./mvnw` en un JDK 21 y ejecuta el jar en un JRE 21 como usuario no root. El health check es `/actuator/health`.
 4. Al arrancar se aplica `db/schema.sql` y Hibernate valida el mapeo. Si la base se creó antes con `ddl-auto: update` y las columnas no coinciden (p. ej. `accuracy` como `double precision`), el arranque falla con un error de validación: aplica `init.sql` sobre una base nueva o ajusta los tipos.
 5. Render termina TLS en un proxy privado; el perfil `render` confía en sus cabeceras `X-Forwarded-*` para conocer la IP real.
