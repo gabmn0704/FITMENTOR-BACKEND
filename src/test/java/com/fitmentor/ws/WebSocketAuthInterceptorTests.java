@@ -3,6 +3,7 @@ package com.fitmentor.ws;
 import com.fitmentor.domain.pose.validation.FrameValidationChain;
 import com.fitmentor.security.AuthenticatedUser;
 import com.fitmentor.security.JwtService;
+import com.fitmentor.security.SessionChecker;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.messaging.Message;
@@ -31,7 +32,7 @@ class WebSocketAuthInterceptorTests {
     WebSocketAuthInterceptorTests() {
         ObjectProvider<LiveTrainingRegistry> provider = mock(ObjectProvider.class);
         when(provider.getObject()).thenReturn(registry);
-        interceptor = new WebSocketAuthInterceptor(mock(JwtService.class), provider);
+        interceptor = new WebSocketAuthInterceptor(mock(JwtService.class), mock(SessionChecker.class), provider);
     }
 
     @Test

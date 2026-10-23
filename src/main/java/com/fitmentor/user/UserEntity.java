@@ -38,6 +38,14 @@ public class UserEntity {
     @Column(name = "is_guest", nullable = false)
     private boolean guest;
 
+    /** BCrypt hash for email/password sign-in. Null for Google and guest users. Never exposed in responses. */
+    @Column(name = "password_hash", length = 100)
+    private String passwordHash;
+
+    /** Tokens issued before this instant are rejected. Set when Google links an email/password account. */
+    @Column(name = "sessions_valid_after")
+    private Instant sessionsValidAfter;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -67,5 +75,17 @@ public class UserEntity {
     public String getGoal() { return goal; }
     public void setGoal(String goal) { this.goal = goal; }
     public boolean isGuest() { return guest; }
+    public String getPasswordHash() { return passwordHash; }
+    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
+    public Instant getSessionsValidAfter() { return sessionsValidAfter; }
+    public void setSessionsValidAfter(Instant sessionsValidAfter) { this.sessionsValidAfter = sessionsValidAfter; }
+
+    /**
+     * Value embedded in every token ({@code svm} claim). Tokens carry the marker that was current
+     * when they were issued; they are valid only while it still matches. 0 means never revoked.
+     */
+    public long sessionMarker() {
+        return sessionsValidAfter == null ? 0L : sessionsValidAfter.toEpochMilli();
+    }
     public Instant getCreatedAt() { return createdAt; }
 }

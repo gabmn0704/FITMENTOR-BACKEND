@@ -34,6 +34,7 @@ public class JwtService {
 
     static final Duration TTL = Duration.ofDays(7);
     static final int MIN_SECRET_LENGTH = 32;
+    static final String SESSION_MARKER_CLAIM = "svm";
 
     private static final Logger logger = LoggerFactory.getLogger(JwtService.class);
     private static final Profiles PRODUCTION = Profiles.of("prod", "render");
@@ -48,10 +49,16 @@ public class JwtService {
     }
 
     public String issue(UUID userId, boolean guest) {
+        return issue(userId, guest, 0L);
+    }
+
+    /** Issues a token bound to the user's current session marker ({@code svm} claim; 0 = never revoked). */
+    public String issue(UUID userId, boolean guest, long sessionMarker) {
         Instant now = clock.instant();
         return Jwts.builder()
             .subject(userId.toString())
             .claim("guest", guest)
+            .claim(SESSION_MARKER_CLAIM, sessionMarker)
             .issuedAt(Date.from(now))
             .expiration(Date.from(now.plus(TTL)))
             .signWith(key)
@@ -70,9 +77,11 @@ public class JwtService {
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+            Object marker = claims.get(SESSION_MARKER_CLAIM);
             return Optional.of(new AuthenticatedUser(
                 UUID.fromString(claims.getSubject()),
-                Boolean.TRUE.equals(claims.get("guest", Boolean.class))));
+                Boolean.TRUE.equals(claims.get("guest", Boolean.class)),
+                marker instanceof Number number ? number.longValue() : 0L));
         } catch (JwtException | IllegalArgumentException exception) {
             return Optional.empty();
         }
