@@ -1,3 +1,4 @@
 package com.fitmentor.domain.session;
 
-public enum TrainingPhase { WARMUP, ACTIVE_SET, REST, FINISHED }
+/** Names of the session states as sent to the frontend in {@code /topic/state}. */
+public enum TrainingPhase { WARMUP, ACTIVE_SET, REST, PAUSED, FINISHED }

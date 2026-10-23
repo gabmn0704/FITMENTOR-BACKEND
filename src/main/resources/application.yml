@@ -1,4 +1,6 @@
 spring:
+  application:
+    name: fitmentor-backend
   datasource:
     url: ${DATABASE_URL:jdbc:h2:mem:fitmentor;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE}
     username: ${DATABASE_USER:sa}
@@ -7,10 +9,29 @@ spring:
     hibernate:
       ddl-auto: ${JPA_DDL_AUTO:update}
     open-in-view: false
-  sql:
-    init:
-      mode: always
 server:
   port: ${PORT:8080}
+  error:
+    include-stacktrace: never
+    include-message: never
 ai:
   service-url: ${AI_SERVICE_URL:http://localhost:8000}
+fitmentor:
+  jwt:
+    secret: ${JWT_SECRET:}
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:}
+  cors:
+    allowed-origins: ${FRONTEND_ORIGIN:*}
+  rate-limit:
+    auth-per-minute: ${RATE_LIMIT_AUTH_PER_MINUTE:20}
+    coach-per-minute: ${RATE_LIMIT_COACH_PER_MINUTE:30}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true

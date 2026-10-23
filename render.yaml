@@ -9,6 +9,7 @@ services:
     name: fitmentor-backend
     runtime: docker
     plan: free
+    dockerfilePath: ./Dockerfile
     healthCheckPath: /actuator/health
     envVars:
       - key: DATABASE_HOST
@@ -31,11 +32,15 @@ services:
         fromDatabase:
           name: fitmentor-db
           property: password
-      - key: DATABASE_DRIVER
-        value: org.postgresql.Driver
-      - key: AI_SERVICE_URL
-        value: https://fitmentor-ai-drmr.onrender.com
       - key: SPRING_PROFILES_ACTIVE
         value: render
       - key: PORT
         value: "8080"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: FRONTEND_ORIGIN
+        sync: false
+      - key: AI_SERVICE_URL
+        sync: false

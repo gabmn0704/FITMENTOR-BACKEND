@@ -4,3 +4,7 @@ target/
 .vscode/
 .DS_Store
 .github/modernize/
+# Leftovers of the discarded TypeScript attempt
+dist/
+node_modules/
+.env
