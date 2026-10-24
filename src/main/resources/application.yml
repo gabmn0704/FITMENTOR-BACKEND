@@ -20,6 +20,8 @@ ai:
   coach-timeout-ms: ${AI_COACH_TIMEOUT_MS:9000}
   # Shared secret sent as X-Internal-Token to the AI service. Must match its AI_SHARED_SECRET. Empty = not sent.
   shared-secret: ${AI_SHARED_SECRET:}
+  # Ping that keeps a sleeping free-tier AI service awake while this backend is awake (every 9 minutes).
+  keep-warm-ms: ${AI_KEEP_WARM_MS:540000}
 fitmentor:
   jwt:
     secret: ${JWT_SECRET:}
