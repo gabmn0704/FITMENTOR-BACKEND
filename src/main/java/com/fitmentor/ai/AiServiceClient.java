@@ -2,6 +2,8 @@ package com.fitmentor.ai;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fitmentor.coach.CoachProfile;
+import com.fitmentor.coach.CoachTurn;
 import com.fitmentor.domain.pose.PoseFrame;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +16,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -176,7 +179,18 @@ public class AiServiceClient {
 
     /** Structured context accepted by the AI {@code /coach} endpoint. Null fields are omitted. */
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public record CoachContext(String exercise, Double score, Integer reps, String level) {
+    public record CoachContext(
+        String exercise,
+        Double score,
+        Integer reps,
+        String level,
+        CoachProfile profile,
+        List<CoachTurn> history
+    ) {
+        /** Context without profile or history (no plan yet, or a first question). */
+        public CoachContext(String exercise, Double score, Integer reps, String level) {
+            this(exercise, score, reps, level, null, null);
+        }
     }
 
     /** Answer of the AI {@code /coach} endpoint; {@code source} is "claude" or "rules". */

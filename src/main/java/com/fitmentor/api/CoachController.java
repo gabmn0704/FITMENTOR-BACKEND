@@ -1,6 +1,9 @@
 package com.fitmentor.api;
 
+import com.fitmentor.coach.CoachProfile;
 import com.fitmentor.coach.CoachService;
+import com.fitmentor.coach.CoachTurn;
+import java.util.List;
 import com.fitmentor.security.AuthenticatedUser;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import jakarta.validation.Valid;
@@ -25,7 +28,7 @@ public class CoachController {
     @PostMapping
     public CoachService.CoachAnswer ask(@AuthenticationPrincipal AuthenticatedUser principal,
                                         @Valid @RequestBody CoachRequest request) {
-        return coach.ask(principal.id(), request.question().strip());
+        return coach.ask(principal.id(), request.question().strip(), request.profile(), request.history());
     }
 
     /**
@@ -38,7 +41,15 @@ public class CoachController {
         String question,
 
         @Size(max = 4000, message = "context must be at most 4000 characters")
-        String context
+        String context,
+
+        /** Validated body profile and plan numbers; optional. */
+        @Valid
+        CoachProfile profile,
+
+        /** Last turns of the conversation (at most 6); optional. */
+        @Size(max = 6, message = "history must have at most 6 turns")
+        List<@Valid CoachTurn> history
     ) {
     }
 }
