@@ -38,10 +38,23 @@ public class CoachService {
     }
 
     public CoachAnswer ask(UUID userId, String question) {
-        CoachContext context = contextFor(userId);
+        return ask(userId, question, null, null);
+    }
+
+    /**
+     * Same as {@link #ask(UUID, String)} with the validated body profile and the last turns of the chat,
+     * so the answer can use the person's goal, numbers and what was already said.
+     */
+    public CoachAnswer ask(UUID userId, String question, CoachProfile profile, List<CoachTurn> history) {
+        CoachContext context = withChat(contextFor(userId), profile, history);
         return ai.coach(question, context)
             .map(reply -> new CoachAnswer(reply.answer(), SOURCE_CLAUDE.equals(reply.source()) ? SOURCE_CLAUDE : SOURCE_RULES))
             .orElseGet(() -> new CoachAnswer(rules.answer(question), SOURCE_RULES));
+    }
+
+    private static CoachContext withChat(CoachContext base, CoachProfile profile, List<CoachTurn> history) {
+        List<CoachTurn> turns = history == null || history.isEmpty() ? null : List.copyOf(history);
+        return new CoachContext(base.exercise(), base.score(), base.reps(), base.level(), profile, turns);
     }
 
     private CoachContext contextFor(UUID userId) {

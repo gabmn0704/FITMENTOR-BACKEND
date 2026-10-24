@@ -87,4 +87,31 @@ class CoachServiceTests {
         assertThat(rules.answer("¿Cuántas repeticiones?")).contains("repetición");
         assertThat(rules.answer("hola")).isEqualTo(RuleBasedCoach.DEFAULT_ANSWER);
     }
+
+    @Test
+    void forwardsTheValidatedProfileAndTheLastTurnsToTheAiService() {
+        when(ai.coach(anyString(), any())).thenReturn(Optional.of(new CoachReply("Ok.", "claude")));
+        CoachProfile profile = new CoachProfile("lose_fat", 78.0, 168.0, 29, "female", 68.0, 16, 2, 4, "omnivore", 1715, 156);
+        List<CoachTurn> history = List.of(new CoachTurn("user", "Quiero bajar de peso"), new CoachTurn("coach", "Vamos paso a paso."));
+
+        coach.ask(USER, "¿Cuántas calorías?", profile, history);
+
+        ArgumentCaptor<CoachContext> context = ArgumentCaptor.forClass(CoachContext.class);
+        verify(ai).coach(eq("¿Cuántas calorías?"), context.capture());
+        assertThat(context.getValue().profile()).isEqualTo(profile);
+        assertThat(context.getValue().history()).containsExactlyElementsOf(history);
+        assertThat(context.getValue().level()).isEqualTo("BEGINNER");
+    }
+
+    @Test
+    void emptyHistoryIsOmitted() {
+        when(ai.coach(anyString(), any())).thenReturn(Optional.of(new CoachReply("Ok.", "rules")));
+
+        coach.ask(USER, "hola", null, List.of());
+
+        ArgumentCaptor<CoachContext> context = ArgumentCaptor.forClass(CoachContext.class);
+        verify(ai).coach(eq("hola"), context.capture());
+        assertThat(context.getValue().history()).isNull();
+        assertThat(context.getValue().profile()).isNull();
+    }
 }
