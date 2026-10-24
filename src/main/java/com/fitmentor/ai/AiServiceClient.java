@@ -114,6 +114,18 @@ public class AiServiceClient {
         }
     }
 
+    /**
+     * Pings the AI service so a sleeping free-tier instance starts waking up. The result is ignored: the
+     * first call may time out while the service boots, which is exactly why it is made ahead of a question.
+     */
+    public void warmUp() {
+        try {
+            coachHttp.get().uri("/health").retrieve().toBodilessEntity();
+        } catch (RestClientException exception) {
+            logger.debug("AI warm-up did not get an answer yet ({})", exception.getClass().getSimpleName());
+        }
+    }
+
     private void failed(String operation, CoolDown breaker, RestClientException exception) {
         if (exception instanceof HttpClientErrorException clientError && clientError.getStatusCode().value() == 401) {
             // Shared secret missing or different on one side: an operator error, treated as a service failure.
