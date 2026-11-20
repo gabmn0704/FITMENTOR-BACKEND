@@ -1,0 +1,25 @@
+name: keep-warm
+
+# Render (plan gratis) duerme los servicios tras 15 min sin visitas y despertarlos tarda ~1 min.
+# Este flujo los visita cada 10 min en horario de uso (08:00-18:59 hora de Colombia) hasta el
+# 2026-11-30, para no gastar las 750 h/mes del plan gratis ni quedarse activo para siempre.
+on:
+  schedule:
+    - cron: "*/10 13-23 * * *"
+    - cron: "*/10 0 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Visitar backend e IA
+        run: |
+          if [ "$(date -u +%Y%m%d)" -gt 20261130 ]; then echo "Fuera de la ventana de la demo: no se hace nada."; exit 0; fi
+          curl -fsS --retry 3 --retry-delay 20 --max-time 120 https://fitmentor-backend-vhnq.onrender.com/actuator/health || true
+          echo
+          curl -fsS --retry 3 --retry-delay 20 --max-time 120 https://fitmentor-ai-drmr.onrender.com/health || true
+          echo
