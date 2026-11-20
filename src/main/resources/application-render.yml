@@ -4,7 +4,7 @@
 # the mapping against it and never alters tables.
 spring:
   datasource:
-    url: jdbc:postgresql://${DATABASE_HOST}:${DATABASE_PORT:5432}/${DATABASE_NAME}
+    url: jdbc:postgresql://${DATABASE_HOST}:${DATABASE_PORT:5432}/${DATABASE_NAME}?sslmode=${DATABASE_SSLMODE:prefer}
     username: ${DATABASE_USER}
     password: ${DATABASE_PASSWORD}
     driver-class-name: org.postgresql.Driver

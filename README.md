@@ -105,6 +105,7 @@ En desarrollo (sin perfil) se usa H2 en memoria con `ddl-auto: update`.
 | `PORT` | No (8080) | Puerto HTTP. |
 | `SPRING_PROFILES_ACTIVE` | No | `render` para PostgreSQL. Vacío para desarrollo con H2. |
 | `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD` | Sólo perfil `render` | Conexión PostgreSQL (Render las rellena desde la base). |
+| `DATABASE_SSLMODE` | No | `prefer` por defecto; usa `require` con Neon u otro Postgres administrado. |
 | `DATABASE_URL` | No | Sólo desarrollo sin perfil: URL **JDBC** (`jdbc:...`). No es la URL `postgres://` de Render. |
 | `JWT_SECRET` | Sí en `prod`/`render` (≥ 32 caracteres) | Clave HS256. Tokens válidos 7 días. En desarrollo se genera una efímera y se avisa en el log. |
 | `GOOGLE_CLIENT_ID` | Sí para login Google | Audiencia de los ID tokens de Google. |
